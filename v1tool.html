@@ -1,168 +1,101 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>简历智能适配工具</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历工具</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
-  <div class="max-w-4xl mx-auto px-4 py-8">
+<div class="max-w-4xl mx-auto px-4 py-8">
 
-    <div class="bg-slate-900 text-white p-4 rounded-xl mb-6">
-      <label class="block mb-2 text-sm">豆包 API Key（格式：AK:SK）</label>
-      <input 
-        type="password" 
-        id="apiKey" 
-        class="w-full p-2 rounded bg-slate-800 border border-slate-700 text-white"
-        placeholder="填入 AccessKeyID:SecretAccessKey"
-      >
-      <button onclick="saveKey()" class="mt-2 bg-indigo-600 px-3 py-1 rounded text-sm">保存</button>
-    </div>
+<div class="bg-indigo-600 text-white p-4 rounded-xl mb-6 text-center font-bold">
+简历智能适配工具（本地演示版）
+</div>
 
-    <div class="grid md:grid-cols-2 gap-6 mb-6">
-      <div>
-        <label class="block mb-2 font-semibold">原始简历</label>
-        <textarea id="oldResume" class="w-full h-32 p-3 rounded border border-slate-200"></textarea>
-      </div>
-      <div>
-        <label class="block mb-2 font-semibold">新增经历（生成CV段落）</label>
-        <textarea id="newExperience" class="w-full h-32 p-3 rounded border border-slate-200"></textarea>
-      </div>
-    </div>
+<div class="grid md:grid-cols-2 gap-6 mb-6">
+<div>
+<label class="block mb-2 font-semibold">原始简历</label>
+<textarea id="oldResume" class="w-full h-32 p-3 rounded border border-slate-200"></textarea>
+</div>
+<div>
+<label class="block mb-2 font-semibold">新增经历</label>
+<textarea id="newExperience" class="w-full h-32 p-3 rounded border border-slate-200"></textarea>
+</div>
+</div>
 
-    <div class="mb-6">
-      <label class="block mb-2 font-semibold">目标 JD</label>
-      <textarea id="targetJD" class="w-full h-40 p-3 rounded border border-slate-200"></textarea>
-    </div>
+<div class="mb-6">
+<label class="block mb-2 font-semibold">目标 JD</label>
+<textarea id="targetJD" class="w-full h-40 p-3 rounded border border-slate-200"></textarea>
+</div>
 
-    <button onclick="startAnalyze()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold w-full">开始智能分析</button>
+<button onclick="run()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold w-full">
+开始分析
+</button>
 
-    <div id="result" class="mt-8 hidden">
-      <div class="bg-emerald-50 p-6 rounded-xl border border-emerald-200 mb-6">
-        <h3 class="font-bold text-xl mb-2">✅ 可直接复制进 CV 的段落</h3>
-        <p id="cvPara" class="text-slate-800 leading-relaxed"></p>
-      </div>
+<div id="result" class="mt-8 hidden">
+<div class="bg-emerald-50 p-6 rounded-xl border border-emerald-200 mb-6">
+<h3 class="font-bold text-xl mb-2">✅ 可直接复制进 CV 的段落</h3>
+<p id="cvPara" class="text-slate-800 leading-relaxed"></p>
+</div>
 
-      <div class="bg-indigo-50 p-6 rounded-xl mb-6">
-        <h3 class="font-bold">HR 理想画像</h3>
-        <p id="persona"></p>
-      </div>
+<div class="bg-indigo-50 p-6 rounded-xl mb-6">
+<h3 class="font-bold">HR 理想画像</h3>
+<p id="persona"></p>
+</div>
 
-      <div class="bg-white p-6 rounded-xl mb-6">
-        <h3 class="font-bold">可迁移能力</h3>
-        <div id="skills" class="flex flex-wrap gap-2 mt-2"></div>
-      </div>
+<div class="bg-white p-6 rounded-xl mb-6">
+<h3 class="font-bold">可迁移能力</h3>
+<div id="skills" class="flex flex-wrap gap-2 mt-2"></div>
+</div>
 
-      <div class="bg-white p-6 rounded-xl mb-6">
-        <h3 class="font-bold mb-4">简历话术优化</h3>
-        <div id="rewrite"></div>
-      </div>
+<div class="bg-white p-6 rounded-xl mb-6">
+<h3 class="font-bold mb-4">简历话术优化</h3>
+<div id="rewrite"></div>
+</div>
 
-      <div class="bg-slate-900 text-slate-300 p-6 rounded-xl">
-        <h3 class="font-bold mb-4">面试防守</h3>
-        <div id="interview"></div>
-      </div>
-    </div>
-  </div>
+<div class="bg-slate-900 text-slate-300 p-6 rounded-xl">
+<h3 class="font-bold mb-4">面试防守</h3>
+<div id="interview"></div>
+</div>
+</div>
+</div>
 
-  <script>
-    let apiKey = localStorage.getItem('doubao_key') || ''
-    if (apiKey) document.getElementById('apiKey').value = apiKey
+<script>
+function run() {
+document.getElementById('result').classList.remove('hidden');
 
-    function saveKey() {
-      apiKey = document.getElementById('apiKey').value.trim()
-      localStorage.setItem('doubao_key', apiKey)
-      alert('已保存')
-    }
+document.getElementById("cvPara").innerText =
+"独立负责业务流程梳理、跨部门协作与问题解决，通过数据驱动方式输出可落地方案，具备快速学习、高效执行与结果导向能力，可快速适配新业务场景并产生价值。";
 
-    async function startAnalyze() {
-      if (!apiKey) { alert('请填写API Key'); return }
+document.getElementById("persona").innerText =
+"企业需要自驱动、上手快、能落地、沟通顺畅、具备实际解决问题能力的人才。";
 
-      const oldResume = document.getElementById('oldResume').value.trim()
-      const newExperience = document.getElementById('newExperience').value.trim()
-      const targetJD = document.getElementById('targetJD').value.trim()
+let skills = ["沟通协调","问题解决","项目执行","业务梳理","跨部门合作","结果导向"];
+let s = document.getElementById("skills");
+s.innerHTML = "";
+skills.forEach(x => s.innerHTML += `<span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">${x}</span>`);
 
-      if (!targetJD) { alert('请填写JD'); return }
+document.getElementById("rewrite").innerHTML = `
+<div class="mb-4 p-4 border rounded-lg">
+<h4 class="font-bold">经历优化</h4>
+<p class="text-sm line-through text-slate-500">负责日常工作</p>
+<p class="text-indigo-600 font-medium mt-1">独立负责业务流程梳理与优化，推动问题解决与落地</p>
+<p class="text-xs text-slate-400 mt-1">突出主动性与结果</p>
+</div>
+`;
 
-      document.getElementById('result').classList.remove('hidden')
-
-      const systemPrompt = `你是资深猎头、简历优化师。
-根据【原始简历】【新增经历】【目标JD】输出严格JSON格式，不要多余内容。
-必须包含字段：
-targetPersona,
-transferableSkills,
-newExperienceCVParagraph,
-rewriteSuggestions: [{"title","original","suggested","logic"}],
-interviewPrep: [{"question","strategy"}]
-`
-
-      const userQuery = `
-原始简历：${oldResume}
-新增经历：${newExperience}
-目标JD：${targetJD}
-`
-
-      try {
-        const proxy = "https://api.allorigins.win/raw?url="
-        const url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-
-        const res = await fetch(proxy + encodeURIComponent(url), {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + apiKey,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "doubao-pro-32k",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userQuery }
-            ],
-            response_format: { type: "json_object" }
-          })
-        })
-
-        const data = await res.json()
-        const result = JSON.parse(data.choices[0].message.content)
-
-        document.getElementById("cvPara").innerText = result.newExperienceCVParagraph
-        document.getElementById("persona").innerText = result.targetPersona
-
-        const skillsEl = document.getElementById("skills")
-        skillsEl.innerHTML = ""
-        result.transferableSkills.forEach(s => {
-          skillsEl.innerHTML += `<span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">${s}</span>`
-        })
-
-        const rewriteEl = document.getElementById("rewrite")
-        rewriteEl.innerHTML = ""
-        result.rewriteSuggestions.forEach(item => {
-          rewriteEl.innerHTML += `
-            <div class="mb-4 p-4 border rounded-lg">
-              <h4 class="font-bold">${item.title}</h4>
-              <p class="text-sm line-through text-slate-500">${item.original}</p>
-              <p class="text-indigo-600 font-medium mt-1">${item.suggested}</p>
-              <p class="text-xs text-slate-400 mt-1">${item.logic}</p>
-            </div>
-          `
-        })
-
-        const interviewEl = document.getElementById("interview")
-        interviewEl.innerHTML = ""
-        result.interviewPrep.forEach(q => {
-          interviewEl.innerHTML += `
-            <div class="mb-4 pb-4 border-b border-slate-700">
-              <p class="text-emerald-400 font-bold">${q.question}</p>
-              <p class="text-sm mt-1 pl-4 border-l border-slate-600">${q.strategy}</p>
-            </div>
-          `
-        })
-      } catch (e) {
-        alert("失败原因：" + e.message)
-        console.error(e)
-      }
-    }
-  </script>
+document.getElementById("interview").innerHTML = `
+<div class="mb-4 pb-4 border-b border-slate-700">
+<p class="text-emerald-400 font-bold">你为什么适合这个岗位？</p>
+<p class="text-sm mt-1 pl-4 border-l border-slate-700">我学习快、执行力强，能快速理解业务并产生价值。</p>
+</div>
+<div class="mb-4 pb-4 border-b border-slate-700">
+<p class="text-emerald-400 font-bold">你的优势是什么？</p>
+<p class="text-sm mt-1 pl-4 border-l border-slate-700">结果导向、善于梳理问题、沟通顺畅。</p>
+</div>
+`;
+}
+</script>
 </body>
 </html>
