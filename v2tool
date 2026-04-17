@@ -1,0 +1,233 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Briefcase, 
+  FileText, 
+  Target, 
+  Sparkles, 
+  ChevronRight, 
+  AlertCircle,
+  MessageSquare,
+  Search,
+  Zap,
+  Key
+} from 'lucide-react';
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState('input');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [apiKey, setApiKey] = useState('');
+  
+  // 从 LocalStorage 加载 Gemini API Key
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) setApiKey(savedKey);
+  }, []);
+
+  const [data, setData] = useState({
+    oldResume: '',
+    newExperience: '',
+    targetJD: ''
+  });
+
+  const [analysis, setAnalysis] = useState(null);
+
+  const handleSaveApiKey = () => {
+    localStorage.setItem('gemini_api_key', apiKey);
+    setErrorMsg('Gemini API Key 已保存到本地');
+  };
+
+  const handleAnalyze = async () => {
+    if (!apiKey) {
+      setErrorMsg('请先填写并保存你的 Gemini API Key');
+      return;
+    }
+    if (!data.targetJD.trim()) {
+      setErrorMsg('请填写目标岗位 JD');
+      return;
+    }
+    
+    setLoading(true);
+    setErrorMsg(null);
+    setActiveTab('analysis');
+    
+    // 针对 Gemini 优化的指令
+    const systemPrompt = `你是一位资深猎头和简历优化专家。
+    请基于用户的原始简历、新增经历和目标JD，输出一个JSON对象。
+    
+    强制输出格式：
+    {
+      "targetPersona": "用人画像与HR痛点拆解",
+      "transferableSkills": ["能力1", "能力2"],
+      "newExperienceCVParagraph": "针对JD优化后的新增经历段落（STAR法则）",
+      "rewriteSuggestions": [{"title": "标题", "original": "原话", "suggested": "新话", "logic": "逻辑"}],
+      "interviewPrep": [{"question": "问题", "strategy": "回答策略"}]
+    }`;
+
+    const userQuery = `
+      [原始简历]: ${data.oldResume}
+      [新增经历]: ${data.newExperience}
+      [目标JD]: ${data.targetJD}
+    `;
+
+    try {
+      // Gemini API 官方端点 (通常不需要跨域代理，Google API 支持 CORS)
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: systemPrompt + "\n\n用户数据如下：\n" + userQuery }]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json", // 强制返回 JSON
+            temperature: 0.7
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || "API 调用失败");
+      }
+      
+      const result = await response.json();
+      // Gemini 的路径解析
+      const rawContent = result.candidates[0].content.parts[0].text;
+      setAnalysis(JSON.parse(rawContent));
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      setErrorMsg(`错误: ${error.message}。已显示演示数据。`);
+      setAnalysis(mockAnalysis);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* API Key 栏 */}
+      <div className="bg-slate-900 text-slate-300 py-3 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Key className="w-4 h-4 text-sky-400" />
+            <span>Gemini API Key：</span>
+          </div>
+          <input 
+            type="password"
+            className="flex-1 max-w-md px-3 py-1.5 bg-slate-800 border border-slate-600 rounded text-sm focus:border-sky-500 outline-none"
+            placeholder="填入你的 Google AI Studio API Key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+          <button onClick={handleSaveApiKey} className="px-4 py-1.5 bg-sky-600 hover:bg-sky-700 rounded text-sm font-medium transition">
+            保存 Key
+          </button>
+        </div>
+      </div>
+
+      <header className="bg-white border-b sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="text-sky-600 w-6 h-6" />
+            <h1 className="text-xl font-bold">Resume Hero / Gemini 版</h1>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setActiveTab('input')} className={`px-4 py-2 rounded-lg text-sm ${activeTab === 'input' ? 'bg-sky-100 text-sky-700' : 'text-slate-500'}`}>资料录入</button>
+            <button onClick={() => setActiveTab('analysis')} disabled={!analysis} className={`px-4 py-2 rounded-lg text-sm ${activeTab === 'analysis' ? 'bg-sky-100 text-sky-700' : 'text-slate-300'}`}>智能诊断</button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {activeTab === 'input' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                <h2 className="font-bold mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-sky-500"/> 原始简历库</h2>
+                <textarea className="w-full h-48 p-4 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-500" value={data.oldResume} onChange={(e) => setData({...data, oldResume: e.target.value})} placeholder="粘贴旧简历..."/>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                <h2 className="font-bold mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-amber-500"/> 新增经历 (大白话)</h2>
+                <textarea className="w-full h-32 p-4 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-500" value={data.newExperience} onChange={(e) => setData({...data, newExperience: e.target.value})} placeholder="例如：最近搞了个自动发货脚本，以前要弄半天现在只要10分钟。"/>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col">
+              <h2 className="font-bold mb-4 flex items-center gap-2"><Target className="w-5 h-5 text-rose-500"/> 目标岗位 JD</h2>
+              <textarea className="flex-1 min-h-[300px] w-full p-4 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-500 mb-4" value={data.targetJD} onChange={(e) => setData({...data, targetJD: e.target.value})} placeholder="粘贴 JD 内容..."/>
+              <button onClick={handleAnalyze} disabled={loading} className="w-full py-4 bg-sky-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-sky-700 transition disabled:bg-slate-300">
+                {loading ? "AI 正在对齐经历..." : "开始 Gemini 智能适配"} <ChevronRight className="w-5 h-5"/>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {errorMsg && <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-sm">{errorMsg}</div>}
+            
+            {analysis && (
+              <>
+                <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl">
+                  <h3 className="font-bold text-emerald-900 mb-3 flex items-center gap-2"><CheckCircle2 className="w-5 h-5"/> 适配完成！建议直接加入简历的段落：</h3>
+                  <div className="bg-white p-4 rounded-xl border border-emerald-100 text-slate-800 leading-relaxed shadow-sm">
+                    {analysis.newExperienceCVParagraph}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-sky-900 p-6 rounded-2xl text-white shadow-lg">
+                    <h3 className="text-sky-300 text-xs font-bold uppercase mb-2">HR 核心人像</h3>
+                    <p className="text-sm leading-relaxed">{analysis.targetPersona}</p>
+                  </div>
+                  <div className="md:col-span-2 bg-white p-6 rounded-2xl border shadow-sm">
+                    <h3 className="text-slate-500 text-xs font-bold uppercase mb-3">识别到的可迁移技能</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.transferableSkills.map((s, i) => (
+                        <span key={i} className="px-3 py-1 bg-sky-50 text-sky-700 rounded-full text-xs font-medium border border-sky-100">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h3 className="font-bold flex items-center gap-2"><MessageSquare className="w-5 h-5 text-sky-600"/> 话术重构</h3>
+                    {analysis.rewriteSuggestions.map((s, i) => (
+                      <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="text-xs text-slate-400 line-through mb-1">{s.original}</div>
+                        <div className="text-sky-700 font-bold mb-2">✨ {s.suggested}</div>
+                        <div className="text-[10px] bg-slate-100 inline-block px-2 py-0.5 rounded text-slate-500 uppercase">底层逻辑: {s.logic}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-4">
+                    <h3 className="font-bold flex items-center gap-2"><Search className="w-5 h-5 text-emerald-600"/> 面试埋伏</h3>
+                    <div className="bg-slate-900 rounded-2xl p-6 text-slate-300 space-y-6 shadow-xl">
+                      {analysis.interviewPrep.map((p, i) => (
+                        <div key={i} className="space-y-2">
+                          <div className="text-emerald-400 font-bold text-sm">问：{p.question}</div>
+                          <div className="text-xs text-slate-400 leading-relaxed pl-4 border-l border-slate-700">答：{p.strategy}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+const mockAnalysis = {
+  targetPersona: "寻找具备极强‘冷启动’能力和‘效率思维’的候选人。",
+  transferableSkills: ["流程自动化", "跨部门协调", "敏捷问题解决"],
+  newExperienceCVParagraph: "通过编写自动化脚本重构业务流，将原本耗时数小时的重复性任务缩减至10分钟以内，提升了全组30%的交付速度，体现了极强的技术迁移能力与效率优化意识。",
+  rewriteSuggestions: [{title: "经验平替", original: "做过客服", suggested: "具备高压环境下的冲突协调能力", logic: "从职位名转向能力模型"}],
+  interviewPrep: [{question: "脚本细节？", strategy: "谈逻辑，不谈语法。强调你如何识别出这个瓶颈位。"}]
+};
+
+export default App;
